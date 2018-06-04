@@ -3,6 +3,8 @@ create by JZFamily@2018/04/27,Modify the KiritoTRw gsock
 note by JZFamily@2018/05/21,
 	one socket is one link,try modify it
 	顺便兼容下ipv6
+note by JZFamily@2018/06/04,
+	一个服务器= 监听socket+与客户端连接的socket.so change the serversock design
 */
 #pragma once
 #include <string>
@@ -36,10 +38,14 @@ public:
 //-----
 	int getsendtime(int& _out_Second, int& _out_uSecond);
 	int getrecvtime(int& _out_Second, int& _out_uSecond);
-
+	
+	//comment by jzf@2018/06/04 阻塞io，出现异常中断导致阻塞
 	int setsendtime(int Second);
 	int setrecvtime(int Second);
-
+	
+	//comment by jzf@2018/06/04, 1)after reset listen socket ,bind error. 
+	//							 2)udp打洞
+	int set_reuse();
 	//add by jzf@2018/06/01,
 	//void closesocket();
 

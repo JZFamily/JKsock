@@ -17,7 +17,7 @@ class JKsock
 public:
 	JKsock();
 	JKsock(int af,int typre,int protocl);
-	JKsock(/*socket*/const int socket):m_socket(socket) { }
+	JKsock(/*socket*/const int socket,const int af):m_socket(socket),m_af(af)   { }
 	virtual ~JKsock();
 public:
 	JKsock( const JKsock&) =delete;
@@ -26,7 +26,8 @@ public:
 	//JKsock operator =(int value) { m_socket = value; }
 protected:
 	int	m_socket;
-
+	//add by jzf 
+	int  m_af;
 public:
 //-----they should be called after connect or accpet
 	//if success return 0
@@ -50,6 +51,8 @@ public:
 	//void closesocket();
 
 public:
+	int bind(std::string host, unsigned short port);
+	int Connect(const std::string ServerName, const unsigned short port);
 //--if server these function has some error
 	virtual int send(const void* Buffer, int Length);
 	virtual int recv(void* Buffer, int MaxToRecv);

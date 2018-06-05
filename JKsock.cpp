@@ -84,6 +84,7 @@ JKsock::JKsock():m_socket(-1),m_af(AF_INET)
 	}
 	JKsocklog("socket =%d func =%s\n", m_socket,__func__);
 }
+
 JKsock::JKsock(int af,int typre,int protocl):m_socket(-1),m_af(af)
 {
 	m_socket = socket(af, typre, protocl);
@@ -184,25 +185,52 @@ bool JKsock::getpeer(std::string& IpStr,unsigned short& port)
 	return true;
 }
 
-bool JKsock::getsockaddrin(const std::string HostName, const unsigned short port,\
-							const sockaddr_storage *dstaddrin)
+bool  JKsock::getnameByaddrin(std::string& _out_IpStr, unsigned short& _out_Port,const void *_in_pAddrin)
+{
+	if (m_af == AF_INET)
+	{
+		char dst[INET_ADDRSTRLEN] = { 0 };
+		if (NULL == inet_ntop(m_af, (struct sockaddr_in*)_in_pAddrin, dst, sizeof(dst)))
+		{
+			JKsocklog("inet_ntop error %s",__func__);
+			return false;
+		}
+		_out_IpStr = dst;
+
+		_out_Port = ((struct sockaddr_in*)_in_pAddrin)->sin_port;
+	}
+	else if (m_af == AF_INET6)
+	{
+		char dst[INET6_ADDRSTRLEN] = { 0 };
+		if (NULL == inet_ntop(m_af, (struct sockaddr_in6 *)_in_pAddrin, dst, sizeof(dst)))
+		{
+			JKsocklog("inet_ntop error %s", __func__);
+			return false;
+		}
+		_out_IpStr = dst;
+		_out_Port = ((struct sockaddr_in6*)&_in_pAddrin)->sin6_port;
+	}
+	return true;
+}
+bool JKsock::getsockaddrinByname(const std::string _in_HostName, const unsigned short _in_port, \
+						const void*_inOut_dstaddrin)
 {
 	//success 1, r 0, fail -1
 	int ret = -1;
 
 	if(m_af == AF_INET)
 	{
-		struct sockaddr_in *sin = (struct sockaddr_in *)dstaddrin;
+		struct sockaddr_in *sin = (struct sockaddr_in *)_inOut_dstaddrin;
 		sin->sin_family =AF_INET;
-		sin->sin_port = htons(port);
-		ret =inet_pton(m_af, HostName.c_str(),&(sin->sin_addr));
+		sin->sin_port = htons(_in_port);
+		ret =inet_pton(m_af, _in_HostName.c_str(),&(sin->sin_addr));
 	}
 	else if(m_af ==AF_INET6)
 	{
-		struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)dstaddrin;
+		struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)_inOut_dstaddrin;
 		sin6->sin6_family =AF_INET6;
-		sin6->sin6_port = htons(port);
-		ret = inet_pton(m_af, HostName.c_str(), &(sin6->sin6_addr));//in6addr_any
+		sin6->sin6_port = htons(_in_port);
+		ret = inet_pton(m_af, _in_HostName.c_str(), &(sin6->sin6_addr));//in6addr_any
 	}
 
 	if(1==ret)
@@ -211,150 +239,14 @@ bool JKsock::getsockaddrin(const std::string HostName, const unsigned short port
 	}
 	else
 	{
-		if(!DNSParse(HostName,dstaddrin))
+		if(!DNSParse(_in_HostName,(const sockaddr_storage *)_inOut_dstaddrin))
 		{
 			return false;
 		}
 	}
 }
 
-int JKsock::bind(unsigned short port)
-{
-	JKsocklog("%s\n", __func__);
-	//sockaddr_in saddr;
-	sockaddr_storage ss;
-	memset(&ss, 0, sizeof(sockaddr_storage));
 
-	socklen_t sslen = sizeof(ss);
-
-	if (m_af == AF_INET)
-	{
-		struct sockaddr_in * sin = (sockaddr_in *)&ss;
-		sin->sin_family = AF_INET;
-		sin->sin_addr.s_addr = INADDR_ANY;
-		sin->sin_port = htons(port);
-	}
-	else if (m_af == AF_INET6)
-	{
-		struct sockaddr_in6 * sin6 = (sockaddr_in6 *)&ss;
-		sin6->sin6_family = AF_INET6;
-		sin6->sin6_addr = in6addr_any;
-		sin6->sin6_port = htons(port);
-	}
-	return ::bind(m_socket, (sockaddr*)&ss, sizeof(ss));
-}
-int JKsock::bind(std::string host, unsigned short port)
-{
-	JKsocklog("%s\n", __func__);
-	//sockaddr_in saddr;
-	sockaddr_storage ss;
-	memset(&ss, 0, sizeof(sockaddr_storage));
-	
-	socklen_t sslen =sizeof(ss);
-	
-	getsockaddrin(host,port,&ss);
-/*
-	if ((host_IP = inet_addr(host.c_str())) == INADDR_NONE)
-	{
-		//转换失败，表明是主机名,需通过主机名获取ip
-		DNSParse(host, host_IP);
-		//memmove(&dest_addr.sin_addr, pHost->h_addr_list[0], pHost->h_length);  
-	}
-	memset(&saddr, 0, sizeof(saddr));
-	saddr.sin_addr.s_addr = host_IP;
-	saddr.sin_port = htons(port);
-	saddr.sin_family = AF_INET;
-*/
-	return ::bind(m_socket, (sockaddr*)&ss, sizeof(ss));
-}
-
-int JKsock::Connect(const std::string ServerName, const unsigned short port)
-{
-	JKsocklog("%s\n", __func__);
-	sockaddr_storage ss;
-	memset(&ss, 0, sizeof(sockaddr_storage));
-	
-	socklen_t sslen =sizeof(ss);
-	getsockaddrin(ServerName,port,&ss);
-	if (0 != connect(m_socket, (sockaddr *)&ss, sizeof(ss)))
-	{
-		//int ret = WSAGetLastError();
-		JKsocklog("%s eeror\n", __func__);
-		return false;
-	}
-	std::string strIP;
-	unsigned short nport;
-	getpeer(strIP,nport);
-	JKsocklog("connect success peer =%s:%u\n",strIP.c_str(),nport);
-	return true;
-}
-
-int JKsock::send(const void * Buffer, int Length)
-{
-	return ::send(m_socket, (const char*)Buffer, Length, 0);;
-}
-
-int JKsock::recv(void * Buffer, int MaxToRecv)
-{
-	return ::recv(m_socket, (char*)Buffer, MaxToRecv, 0);
-}
-
-int JKsock::sendto(const std::string& IPStr,const unsigned short& Port,const void* Buffer, int Length)
-{
-	sockaddr_storage ss;
-	socklen_t sslen =sizeof(ss);
-	memset(&ss, 0, sizeof(sockaddr_storage));
-
-	getsockaddrin(IPStr,Port,&ss);
-	return ::sendto(m_socket, (const char*)Buffer, Length, 0, (const sockaddr*)&ss, sslen);
-}
-
-int JKsock::recvfrom(const unsigned short fromPort, void* Buffer, int Length)
-{
-	JKsocklog("%s\n", __func__);
-	sockaddr_storage ss;
-	memset(&ss, 0, sizeof(sockaddr_storage));
-
-	socklen_t sslen = sizeof(ss);
-
-	if (m_af == AF_INET)
-	{
-		struct sockaddr_in * sin = (sockaddr_in *)&ss;
-		sin->sin_family = AF_INET;
-		sin->sin_addr.s_addr = INADDR_ANY;
-		sin->sin_port = htons(fromPort);
-	}
-	else if (m_af == AF_INET6)
-	{
-		struct sockaddr_in6 * sin6 = (sockaddr_in6 *)&ss;
-		sin6->sin6_family = AF_INET6;
-		sin6->sin6_addr = in6addr_any;
-		sin6->sin6_port = htons(fromPort);
-	}
-	
-	int ret =::recvfrom(m_socket, (char*)Buffer, Length, 0, (sockaddr*)&ss, &sslen);
-	std::string strIP;
-	unsigned short nport;
-	getpeer(strIP, nport);
-	JKsocklog("recvfrom peer =%s:%d\n", strIP.c_str(), nport);
-
-	return  ret;
-}
-int JKsock::recvfrom(const std::string& fromIP, unsigned short& fromPort,void* Buffer, int Length)
-{
-	sockaddr_storage ss;
-	socklen_t sslen =sizeof(ss);
-
-	memset(&ss, 0, sizeof(sockaddr_storage));
-	getsockaddrin(fromIP,fromPort,&ss);
-	
-	int ret=::recvfrom(m_socket, (char*)Buffer, Length, 0, (sockaddr*)&ss, &sslen);
-	std::string strIP;
-	unsigned short nport;
-	getpeer(strIP, nport);
-	JKsocklog("recvfrom peer =%s:%u\n", strIP.c_str(), nport);
-	return ret;
-}
 int JKsock::getsendtime(int & _out_Second, int & _out_uSecond)
 {
 	struct timeval outtime;
@@ -424,6 +316,154 @@ int JKsock::set_reuse()
 	int on = 1;
 	return setsockopt(m_socket, SOL_SOCKET, SO_REUSEADDR,(const char *)&on,sizeof(on));
 }
+int JKsock::bind(unsigned short port)
+{
+	JKsocklog("%s\n", __func__);
+	//sockaddr_in saddr;
+	sockaddr_storage ss;
+	memset(&ss, 0, sizeof(sockaddr_storage));
+
+	socklen_t sslen = sizeof(ss);
+
+	if (m_af == AF_INET)
+	{
+		struct sockaddr_in * sin = (sockaddr_in *)&ss;
+		sin->sin_family = AF_INET;
+		sin->sin_addr.s_addr = INADDR_ANY;
+		sin->sin_port = htons(port);
+	}
+	else if (m_af == AF_INET6)
+	{
+		struct sockaddr_in6 * sin6 = (sockaddr_in6 *)&ss;
+		sin6->sin6_family = AF_INET6;
+		sin6->sin6_addr = in6addr_any;
+		sin6->sin6_port = htons(port);
+	}
+	return ::bind(m_socket, (sockaddr*)&ss, sizeof(ss));
+}
+int JKsock::bind(std::string host, unsigned short port)
+{
+	JKsocklog("%s\n", __func__);
+	//sockaddr_in saddr;
+	sockaddr_storage ss;
+	memset(&ss, 0, sizeof(sockaddr_storage));
+	
+	socklen_t sslen =sizeof(ss);
+	
+	getsockaddrinByname(host,port,&ss);
+/*
+	if ((host_IP = inet_addr(host.c_str())) == INADDR_NONE)
+	{
+		//转换失败，表明是主机名,需通过主机名获取ip
+		DNSParse(host, host_IP);
+		//memmove(&dest_addr.sin_addr, pHost->h_addr_list[0], pHost->h_length);  
+	}
+	memset(&saddr, 0, sizeof(saddr));
+	saddr.sin_addr.s_addr = host_IP;
+	saddr.sin_port = htons(port);
+	saddr.sin_family = AF_INET;
+*/
+	return ::bind(m_socket, (sockaddr*)&ss, sizeof(ss));
+}
+
+int JKsock::Connect(const std::string ServerName, const unsigned short port)
+{
+	JKsocklog("%s\n", __func__);
+	sockaddr_storage ss;
+	memset(&ss, 0, sizeof(sockaddr_storage));
+	
+	socklen_t sslen =sizeof(ss);
+	getsockaddrinByname(ServerName,port,&ss);
+	if (0 != connect(m_socket, (sockaddr *)&ss, sizeof(ss)))
+	{
+		//int ret = WSAGetLastError();
+		JKsocklog("%s eeror\n", __func__);
+		return false;
+	}
+	std::string strIP;
+	unsigned short nport;
+	getpeer(strIP,nport);
+	JKsocklog("connect success peer =%s:%u\n",strIP.c_str(),nport);
+	return true;
+}
+
+int JKsock::send(const void * Buffer, int Length)
+{
+	return ::send(m_socket, (const char*)Buffer, Length, 0);
+}
+
+int JKsock::recv(void * Buffer, int MaxToRecv)
+{
+	int ret =::recv(m_socket, (char*)Buffer, MaxToRecv, 0);
+#ifdef JKSOCK_DEBUG
+	std::string strIP;
+	unsigned short nport;
+	getpeer(strIP,nport);
+	JKsocklog("func =%s peer =%s:%u\n",__func__, strIP.c_str(), nport);
+#endif
+	return  ret;
+}
+
+int JKsock::sendto(const std::string& IPStr,const unsigned short& Port,const void* Buffer, int Length)
+{
+	sockaddr_storage ss;
+	socklen_t sslen =sizeof(ss);
+	memset(&ss, 0, sizeof(sockaddr_storage));
+
+	getsockaddrinByname(IPStr,Port,&ss);
+	return ::sendto(m_socket, (const char*)Buffer, Length, 0, (const sockaddr*)&ss, sslen);
+}
+
+int JKsock::recvfrom(const unsigned short fromPort, void* Buffer, int Length)
+{
+	JKsocklog("%s\n", __func__);
+	sockaddr_storage ss;
+	memset(&ss, 0, sizeof(sockaddr_storage));
+
+	socklen_t sslen = sizeof(ss);
+
+	if (m_af == AF_INET)
+	{
+		struct sockaddr_in * sin = (sockaddr_in *)&ss;
+		sin->sin_family = AF_INET;
+		sin->sin_addr.s_addr = INADDR_ANY;
+		sin->sin_port = htons(fromPort);
+	}
+	else if (m_af == AF_INET6)
+	{
+		struct sockaddr_in6 * sin6 = (sockaddr_in6 *)&ss;
+		sin6->sin6_family = AF_INET6;
+		sin6->sin6_addr = in6addr_any;
+		sin6->sin6_port = htons(fromPort);
+	}
+	
+	int ret =::recvfrom(m_socket, (char*)Buffer, Length, 0, (sockaddr*)&ss, &sslen);
+#ifdef JKSOCK_DEBUG
+	std::string strIP;
+	unsigned short nport;
+	getnameByaddrin(strIP,nport,&ss);
+	JKsocklog("func =%s peer =%s:%u\n",__func__, strIP.c_str(), nport);
+#endif
+	return  ret;
+}
+int JKsock::recvfrom(const std::string& fromIP, unsigned short& fromPort,void* Buffer, int Length)
+{
+	sockaddr_storage ss;
+	socklen_t sslen =sizeof(ss);
+
+	memset(&ss, 0, sizeof(sockaddr_storage));
+	getsockaddrinByname(fromIP,fromPort,&ss);
+	
+	int ret=::recvfrom(m_socket, (char*)Buffer, Length, 0, (sockaddr*)&ss, &sslen);
+#ifdef JKSOCK_DEBUG
+	std::string strIP;
+	unsigned short nport;
+	getnameByaddrin(strIP,nport,&ss);
+	JKsocklog("func =%s peer =%s:%u\n",__func__, strIP.c_str(), nport);
+#endif
+	return ret;
+}
+
 int DNSParse(const std::string & HostName, const sockaddr_storage * ss)
 {
 	/// Use getaddrinfo instead
@@ -482,16 +522,6 @@ JKServer::JKServer()
 JKServer::~JKServer()
 {
 
-}
-int JKServer::bind(unsigned short port)
-{
-	JKsocklog("%s\n", __func__);
-	sockaddr_in saddr;
-	memset(&saddr, 0, sizeof(saddr));
-	saddr.sin_addr.s_addr = 0;
-	saddr.sin_port = htons(port);
-	saddr.sin_family = AF_INET;
-	return ::bind(m_socket, (sockaddr*)&saddr, sizeof(saddr));
 }
 
 int JKServer::listen(int MaxCount)

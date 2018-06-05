@@ -3,14 +3,19 @@ create by JZFamily@2018/04/27,Modify the KiritoTRw gsock
 note by JZFamily@2018/05/21,
 	one socket is one link,try modify it
 	顺便兼容下ipv6
+note by JZFamily@2018/06/03,
+	对于socket，
+		linu下支持2-3层
+		win是在3层基础上进行,2层要NDIS了
+	所以，jksock只关心三层网络层的编程，物理层不刻意支持。
 note by JZFamily@2018/06/04,
 	一个服务器= 监听socket+与客户端连接的socket.so change the serversock design
 */
 #pragma once
 #include <string>
-
+struct sockaddr_storage;
 //DNS解析
-int DNSParse(const std::string & HostName, unsigned long& _out_IP);
+int DNSParse(const std::string & HostName, const sockaddr_storage * ss);
 
 class JKsock
 {
@@ -26,13 +31,16 @@ public:
 	//JKsock operator =(int value) { m_socket = value; }
 protected:
 	int	m_socket;
-	//add by jzf 
-	int  m_af;
+	//add by jzf@2018/06/05 
+	const int  m_af;
 public:
 //-----they should be called after connect or accpet
 	//if success return 0
-	bool getlocal(std::string& IpStr,unsigned int& port);
-	bool getpeer(std::string& IpStr,unsigned int& port);
+	bool getlocal(std::string& IpStr, unsigned short& port);
+	bool getpeer(std::string& IpStr, unsigned short& port);
+	bool getsockaddrin(const std::string HostName, const unsigned short port, 
+						const sockaddr_storage *dstaddrin);
+	
 	//int getsockname(int sockfd, struct sockaddr *localaddr, /*socklen_t*/ int *addrlen);  
 	//int getpeername(int sockfd, struct sockaddr *peeraddr, /*socklen_t*/  int *addrlen);
 	
@@ -49,15 +57,18 @@ public:
 	int set_reuse();
 	//add by jzf@2018/06/01,
 	//void closesocket();
-
 public:
+	int bind(unsigned short port);
 	int bind(std::string host, unsigned short port);
 	int Connect(const std::string ServerName, const unsigned short port);
 //--if server these function has some error
 	virtual int send(const void* Buffer, int Length);
 	virtual int recv(void* Buffer, int MaxToRecv);
-	int sendto(const std::string& IPStr, unsigned short Port,const void* Buffer, int Length);
-	int recvfrom(std::string& fromIP, unsigned short fromPort,void* Buffer, int MaxToRecvs);
+	int sendto(const std::string& IPStr, const unsigned short& Port,
+				const void* Buffer, int Length);
+	int recvfrom(const std::string& fromIP, unsigned short& fromPort,
+				void* Buffer, int MaxToRecvs);
+	int recvfrom(const unsigned short fromPort, void* Buffer, int MaxToRecvs);
 //----
 
 };
@@ -70,7 +81,6 @@ public:
 	~JKServer();
 public:
     int bind(unsigned short port);
-	int bind(std::string host, unsigned short port);
 	int listen(int MaxCount);
 	JKsock *accept();
 };
@@ -80,6 +90,4 @@ class JKClient:public JKsock
 public:
 	JKClient();
 	~JKClient();
-public:
-	bool Connect(const std::string ServerName, const unsigned int port);
 };

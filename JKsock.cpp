@@ -170,7 +170,7 @@ bool  JKsock::getnameByaddrin(std::string& _out_IpStr, unsigned short& _out_Port
 		}
 		_out_IpStr = dst;
 
-		_out_Port = nstoh(sin->sin_port);
+		_out_Port = ntohs(sin->sin_port);
 	}
 	else if (m_af == AF_INET6)
 	{
@@ -182,7 +182,7 @@ bool  JKsock::getnameByaddrin(std::string& _out_IpStr, unsigned short& _out_Port
 			return false;
 		}
 		_out_IpStr = dst;
-		_out_Port = nstoh(sin6->sin6_port);
+		_out_Port = ntohs(sin6->sin6_port);
 	}
 	return true;
 }
@@ -519,10 +519,14 @@ JKsock* JKServer::accept()
 	else
 	{
 		pJKsock=  new JKsock(ret,saddr->sa_family);
+
+#ifdef JKSOCK_DEBUG
+
 		std::string strIP;
 		unsigned short nport;
-		getpeer(strIP,nport);
-		JKsocklog("accept success peer =%s:%d\n",strIP.c_str(),nport);
+		getpeer(strIP, nport);
+		JKsocklog("accept success peer =%s:%d\n", strIP.c_str(), nport);
+#endif //  JKDEBUG
 	}
 	return pJKsock;
 	

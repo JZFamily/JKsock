@@ -123,20 +123,9 @@ bool JKsock::getlocal(std::string& IpStr, unsigned short& port)
 	//af =AF_INET6,if error occus ,ntop return null
 	//const char *inet_ntop(int af, const void *src, char *dst, socklen_t cnt);
 	//IpStr = inet_ntoa(addrin.sin_addr);
-	if(m_af ==AF_INET)
+	if(!getnameByaddrin(IpStr,port,&ss))
 	{
-		char dst[INET_ADDRSTRLEN]={0};
-		inet_ntop(m_af,&ss,dst,sizeof(dst));
-		IpStr = dst;
-
-		port  =( (struct sockaddr_in*)&ss)->sin_port;
-	}
-	else if(m_af ==AF_INET6)
-	{
-		char dst[INET6_ADDRSTRLEN]={0};
-		inet_ntop(m_af,&ss,dst,sizeof(dst));
-		IpStr = dst;
-		port  = ((struct sockaddr_in6*)&ss)->sin6_port;
+		return false;
 	}
 	return true;
 }
@@ -161,26 +150,9 @@ bool JKsock::getpeer(std::string& IpStr,unsigned short& port)
 	port  = addrin.sin_port;
 	
 */
-	if (m_af == AF_INET)
+	if(!getnameByaddrin(IpStr,port,&ss))
 	{
-		char dst[INET_ADDRSTRLEN] = { 0 };
-		if (NULL == inet_ntop(m_af, &ss, dst, sizeof(dst)))
-		{
-			JKsocklog("inet_ntop error %s",__func__);
-		}
-		IpStr = dst;
-
-		port = ((struct sockaddr_in*)&ss)->sin_port;
-	}
-	else if (m_af == AF_INET6)
-	{
-		char dst[INET6_ADDRSTRLEN] = { 0 };
-		if (NULL == inet_ntop(m_af, &ss, dst, sizeof(dst)))
-		{
-			JKsocklog("inet_ntop error %s", __func__);
-		}
-		IpStr = dst;
-		port = ((struct sockaddr_in6*)&ss)->sin6_port;
+		return false;
 	}
 	return true;
 }
@@ -190,25 +162,27 @@ bool  JKsock::getnameByaddrin(std::string& _out_IpStr, unsigned short& _out_Port
 	if (m_af == AF_INET)
 	{
 		char dst[INET_ADDRSTRLEN] = { 0 };
-		if (NULL == inet_ntop(m_af, (struct sockaddr_in*)_in_pAddrin, dst, sizeof(dst)))
+		struct sockaddr_in* sin = (struct sockaddr_in*)_in_pAddrin;
+		if (NULL == inet_ntop(m_af, sin, dst, sizeof(dst)))
 		{
 			JKsocklog("inet_ntop error %s",__func__);
 			return false;
 		}
 		_out_IpStr = dst;
 
-		_out_Port = ((struct sockaddr_in*)_in_pAddrin)->sin_port;
+		_out_Port = nstoh(sin->sin_port);
 	}
 	else if (m_af == AF_INET6)
 	{
 		char dst[INET6_ADDRSTRLEN] = { 0 };
-		if (NULL == inet_ntop(m_af, (struct sockaddr_in6 *)_in_pAddrin, dst, sizeof(dst)))
+		struct sockaddr_in6* sin6 = (struct sockaddr_in6*)_in_pAddrin;
+		if (NULL == inet_ntop(m_af,sin6, dst, sizeof(dst)))
 		{
 			JKsocklog("inet_ntop error %s", __func__);
 			return false;
 		}
 		_out_IpStr = dst;
-		_out_Port = ((struct sockaddr_in6*)&_in_pAddrin)->sin6_port;
+		_out_Port = nstoh(sin6->sin6_port);
 	}
 	return true;
 }

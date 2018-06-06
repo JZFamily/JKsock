@@ -34,13 +34,15 @@ protected:
 	//add by jzf@2018/06/05 
 	const int  m_af;
 public:
-//-----they should be called after connect or accpet
+
+	//-----they should be called after connect or accpet
 	//if success return 0
 	bool getlocal(std::string& IpStr, unsigned short& port);
 	bool getpeer(std::string& IpStr, unsigned short& port);
-	bool getsockaddrin(const std::string HostName, const unsigned short port, 
-						const sockaddr_storage *dstaddrin);
 	
+	bool getsockaddrinByname(const std::string _in_HostName, const unsigned short _in_port, \
+						const void*_inOut_dstaddrin);
+	bool getnameByaddrin(std::string& _out_IpStr, unsigned short& _out_Port,const void *_in_pAddrin);
 	//int getsockname(int sockfd, struct sockaddr *localaddr, /*socklen_t*/ int *addrlen);  
 	//int getpeername(int sockfd, struct sockaddr *peeraddr, /*socklen_t*/  int *addrlen);
 	

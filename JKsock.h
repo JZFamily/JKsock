@@ -24,7 +24,7 @@ public:
 	JKsock(int af,int typre,int protocl);
 	JKsock(/*socket*/const int socket,const int af):m_socket(socket),m_af(af)   { }
 	virtual ~JKsock();
-public:
+private:
 	JKsock( const JKsock&) =delete;
 	JKsock& operator = (const JKsock&)  =delete;
 	//operator int(){return m_socket;}
@@ -69,8 +69,9 @@ public:
 	int sendto(const std::string& IPStr, const unsigned short& Port,
 				const void* Buffer, int Length);
 	int recvfrom(const std::string& fromIP, unsigned short& fromPort,
-				void* Buffer, int MaxToRecvs);
-	int recvfrom(const unsigned short fromPort, void* Buffer, int MaxToRecvs);
+				void* Buffer, int _in_MaxToRecvs);
+	int recvfrom(struct sockaddr_storage& ss, const void* Buffer, int _in_MaxToRecvs);
+	//int recvfrom(const unsigned short fromPort, void* Buffer, int MaxToRecvs);
 //----
 
 };
@@ -82,7 +83,6 @@ public:
 	JKServer();
 	~JKServer();
 public:
-    int bind(unsigned short port);
 	int listen(int MaxCount);
 	JKsock *accept();
 };

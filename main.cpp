@@ -2,7 +2,7 @@
 #include"JKsock.h"
 #include<thread>
 #include<iostream>
-
+#include<cstring>
 //void func(JKsock *pjksock)
 //{
 //	int ret;
@@ -103,43 +103,46 @@
 //
 //} 
 
-int main()
-{
-	JKsock udpsock(2,2,0);
-
-	std::string sendbuf;
-	char recvbuf[1024] = {0};
-	udpsock.setsendtime(5);
-	udpsock.setrecvtime(5);
-	while (true)
-	{
-		std::cin >> sendbuf;
-		udpsock.sendto("140.143.224.173", 46668, sendbuf.c_str(), sendbuf.size());
-		unsigned short post = 46668;
-		std::cout << post << std::endl;
-	/*	udpsock.recvfrom("140.143.224.173", post, recvbuf, sizeof(recvbuf));
-		memset(recvbuf, 0, sizeof(recvbuf));*/
-		std::cout << recvbuf << std::endl;
-	}
-
-}
-
 //int main()
 //{
-//	JKsock udpsock(2, 2, 0);
+//	JKsock udpsock(2,2,0);
 //
 //	std::string sendbuf;
-//	char recvbuf[1024] = { 0 };
-//	udpsock.bind(46668);
+//	char recvbuf[1024] = {0};
+//	udpsock.setsendtime(5);
+//	udpsock.setrecvtime(5);
+//	udpsock.Connect("140.143.224.173", 46668);
 //	while (true)
 //	{
 //		std::cin >> sendbuf;
-//		udpsock.recvfrom(46668, recvbuf, sizeof(recvbuf));
-//
-//		udpsock.sendto("140.143.224.173", 46668, sendbuf.c_str(), sendbuf.size());
-//
-//		
-//		memset(recvbuf, 0, sizeof(recvbuf));
+//		//udpsock.sendto("140.143.224.173", 46668, sendbuf.c_str(), sendbuf.size());
+//	/*	udpsock.recvfrom("140.143.224.173", post, recvbuf, sizeof(recvbuf));
+//		memset(recvbuf, 0, sizeof(recvbuf));*/
+//		udpsock.send(sendbuf.c_str(),sendbuf.size());
 //		std::cout << recvbuf << std::endl;
+//		udpsock.recv(recvbuf,1024);
 //	}
+//
 //}
+
+int main()
+{
+	JKsock udpsock(2, 2, 0);
+
+	std::string sendbuf;
+	char recvbuf[1024] = { 0 };
+	udpsock.bind(46668);
+	while (true)
+	{
+		std::cin >> sendbuf;
+		udpsock.recvfrom(46668, recvbuf, sizeof(recvbuf));
+		memset(recvbuf, 0, sizeof(recvbuf));
+		std::cout << recvbuf << std::endl;
+		udpsock.recv(recvbuf, sizeof(recvbuf));
+		//udpsock.sendto("140.143.224.173", 46668, sendbuf.c_str(), sendbuf.size());
+
+		
+		memset(recvbuf, 0, sizeof(recvbuf));
+		std::cout << recvbuf << std::endl;
+	}
+}

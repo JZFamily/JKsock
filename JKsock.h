@@ -12,84 +12,110 @@ note by JZFamily@2018/06/04,
 	一个服务器= 监听socket+与客户端连接的socket.so change the serversock design
 */
 #pragma once
+
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#else
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>  //inet_itoa
+#include <netinet/in.h> //sockaddr_in
+#include <netinet/tcp.h>
+#include <netdb.h>
+
+#endif
+
 #include <string>
-struct sockaddr_storage;
-//DNS解析
-int DNSParse(const std::string & HostName, const sockaddr_storage * ss);
+namespace JKsock{
+	//DNS解析
+	int DNSParse(const std::string & HostName, const sockaddr_storage * ss);
 
-class JKsock
-{
-public:
-	JKsock();
-	JKsock(int af,int typre,int protocl);
-	JKsock(/*socket*/const int socket,const int af):m_socket(socket),m_af(af)   { }
-	virtual ~JKsock();
-private:
-	JKsock( const JKsock&) =delete;
-	JKsock& operator = (const JKsock&)  =delete;
-	//operator int(){return m_socket;}
-	//JKsock operator =(int value) { m_socket = value; }
-protected:
-	int	m_socket;
-	//add by jzf@2018/06/05 
-	const int  m_af;
-public:
+	class JKsock
+	{
+	public:
+		JKsock();
+		JKsock(int af, int typre, int protocl);
+		JKsock(/*socket*/const int socket, const int af) :m_socket(socket), m_af(af) { }
+		virtual ~JKsock();
+	private:
+		JKsock(const JKsock&) = delete;
+		JKsock& operator = (const JKsock&) = delete;
+		//operator int(){return m_socket;}
+		//JKsock operator =(int value) { m_socket = value; }
+	protected:
+		int	m_socket;
+		//add by jzf@2018/06/05 
+		const int  m_af;
+	public:
 
-	//-----they should be called after connect or accpet
-	//if success return 0
-	bool getlocal(std::string& IpStr, unsigned short& port);
-	bool getpeer(std::string& IpStr, unsigned short& port);
-	
-	bool getsockaddrinByname(const std::string _in_HostName, const unsigned short _in_port, \
-						const void*_inOut_dstaddrin);
-	bool getnameByaddrin(std::string& _out_IpStr, unsigned short& _out_Port,const void *_in_pAddrin);
-	//int getsockname(int sockfd, struct sockaddr *localaddr, /*socklen_t*/ int *addrlen);  
-	//int getpeername(int sockfd, struct sockaddr *peeraddr, /*socklen_t*/  int *addrlen);
-	
-//-----
-	int getsendtime(int& _out_Second, int& _out_uSecond);
-	int getrecvtime(int& _out_Second, int& _out_uSecond);
-	
-	//comment by jzf@2018/06/04 阻塞io，出现异常中断导致阻塞
-	int setsendtime(int Second);
-	int setrecvtime(int Second);
-	
-	//comment by jzf@2018/06/04, 1)after reset listen socket ,bind error. 
-	//							 2)udp打洞
-	int set_reuse();
-	//add by jzf@2018/06/01,
-	//void closesocket();
-public:
-	int bind(unsigned short port);
-	int bind(std::string host, unsigned short port);
-	int Connect(const std::string ServerName, const unsigned short port);
-//--if server these function has some error
-	virtual int send(const void* Buffer, int Length);
-	virtual int recv(void* Buffer, int MaxToRecv);
-	int sendto(const std::string& IPStr, const unsigned short& Port,
-				const void* Buffer, int Length);
-	int recvfrom(const std::string& fromIP, unsigned short& fromPort,
-				void* Buffer, int _in_MaxToRecvs);
-	int recvfrom(struct sockaddr_storage& ss, const void* Buffer, int _in_MaxToRecvs);
-	//int recvfrom(const unsigned short fromPort, void* Buffer, int MaxToRecvs);
-//----
+		//-----they should be called after connect or accpet
+		//if success return 0
+		bool getlocal(std::string& IpStr, unsigned short& port);
+		bool getpeer(std::string& IpStr, unsigned short& port);
 
-};
+		bool getsockaddrinByname(const std::string _in_HostName, const unsigned short _in_port, \
+			const void*_inOut_dstaddrin);
+		bool getnameByaddrin(std::string& _out_IpStr, unsigned short& _out_Port, const void *_in_pAddrin);
+		//int getsockname(int sockfd, struct sockaddr *localaddr, /*socklen_t*/ int *addrlen);  
+		//int getpeername(int sockfd, struct sockaddr *peeraddr, /*socklen_t*/  int *addrlen);
 
-class JKServer :public JKsock
-{
+		//-----
+		int getsendtime(int& _out_Second, int& _out_uSecond);
+		int getrecvtime(int& _out_Second, int& _out_uSecond);
 
-public:
-	JKServer();
-	~JKServer();
-public:
-	int listen(int MaxCount);
-	JKsock *accept();
-};
+		//comment by jzf@2018/06/04 阻塞io，出现异常中断导致阻塞
+		int setsendtime(int Second);
+		int setrecvtime(int Second);
 
-class JKClient:public JKsock
-{
-public:
-	JKClient();
-	~JKClient();
-};
+		//comment by jzf@2018/06/04, 1)after reset listen socket ,bind error. 
+		//							 2)udp打洞
+		int set_reuse();
+		//add by jzf@2018/06/01,
+		//void closesocket();
+	public:
+		int bind(unsigned short port);
+		int bind(std::string host, unsigned short port);
+		int Connect(const std::string ServerName, const unsigned short port);
+		//--if server these function has some error
+		virtual int send(const void* Buffer, int Length);
+		virtual int recv(void* Buffer, int MaxToRecv);
+		int sendto(const std::string& IPStr, const unsigned short& Port,
+			const void* Buffer, int Length);
+		int recvfrom(const std::string& fromIP, unsigned short& fromPort,
+			void* Buffer, int _in_MaxToRecvs);
+		int recvfrom(struct sockaddr_storage& ss, const void* Buffer, int _in_MaxToRecvs);
+		//int recvfrom(const unsigned short fromPort, void* Buffer, int MaxToRecvs);
+		//----
+
+	};
+
+	class JKServer :public JKsock
+	{
+
+	public:
+		JKServer();
+		~JKServer();
+	public:
+		int listen(int MaxCount);
+		JKsock *accept();
+	};
+
+	class JKClient :public JKsock
+	{
+	public:
+		JKClient();
+		~JKClient();
+	};
+
+
+	class JKsockaddr_storage
+	{
+		sockaddr_storage m_ss;
+		bool getsockaddrinByname(const std::string _in_HostName, const unsigned short _in_port, \
+			const void*_inOut_dstaddrin);
+		bool getnameByaddrin(std::string& _out_IpStr, unsigned short& _out_Port, const void *_in_pAddrin);
+	}
+
+}

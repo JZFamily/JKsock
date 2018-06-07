@@ -1,23 +1,14 @@
 #include "JKsock.h"
+#include <stdexcept>
+
+#ifndef _WIN32
+#define closesocket close
+#endif // !_WIN32
 
 #ifdef _WIN32
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#else
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>  //inet_itoa
-#include <netinet/in.h> //sockaddr_in
-#include <netinet/tcp.h>
-#include <netdb.h>
-#define closesocket close
+#pragma comment(lib, "ws2_32.lib") 
 #endif
 
-#include <cstring> /// memset
-#include <string>
-#include <stdexcept>
-#include <memory.h>
 #define JKSOCK_DEBUG 1 
 #ifdef JKSOCK_DEBUG
 #pragma message("JKSock Debug mode compiled in")
@@ -27,10 +18,8 @@
 #define JKsocklog(fmt,...)
 #endif
 
-#ifdef _WIN32
-#pragma comment(lib, "ws2_32.lib") 
-#endif
-
+#include <cstring>
+using namespace JKsock;
 //add by jzf@2018/06/05,copy from libevent to resolve ipv6
 //comment by jzf@2018/06/05 ,it has define in socket lib
 //struct sockaddr_storage {
